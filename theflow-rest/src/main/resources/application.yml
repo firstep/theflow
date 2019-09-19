@@ -1,0 +1,49 @@
+server:
+  port: 8080
+logging:
+  level:
+    org.flowable: debug
+spring:
+  messages:
+    basename: i18n/**
+    cache-duration: PT10H
+  aop:
+    proxy-target-class: true
+  datasource:
+    url: jdbc:mysql://localhost:3306/theflow?useUnicode=true&characterEncoding=UTF-8&nullCatalogMeansCurrent=true
+    username: theflow
+    password: theflow
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    type: com.zaxxer.hikari.HikariDataSource
+    hikari:
+      pool-name: DatebookHikariCP
+      minimum-idle: 5
+      maximum-pool-size: 15
+      auto-commit: true
+      idle-timeout: 30000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      connection-test-query: SELECT 1
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    timeZone: GMT+8
+#  cache:
+#    type: CAFFEINE
+#    cacheNames: token
+#    caffeine:
+#      spec: maximumSize=500,expireAfterAccess=600s
+shiro:
+  userNativeSessionManager: true
+  sessionManager:
+    sessionIdUrlRewritingEnabled: false
+    sessionIdCookieEnabled: false
+  filter:
+    anon: /auth/**, /favicon.ico, /assets/**, /swagger-ui.html, /webjars/**, /swagger-resources/**, /v2/**
+    authc: /**
+app:
+  token:
+    cacheType: database
+    secret: xxxxxxxxxxxxxxxx
+    accessExpire: 300000
+    refreshExpire: 1800000
+  caches: "{token: 'maximumSize=500,expireAfterWrite=30m', default:'maximumSize=500,expireAfterAccess=600s'}"

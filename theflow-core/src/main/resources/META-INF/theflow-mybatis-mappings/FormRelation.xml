@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.firstep.theflow.entity.FormRelationEntity">
+
+    <resultMap id="modelRelationResultMap" type="cn.firstep.theflow.entity.FormRelationEntity">
+        <id property="id" column="ID_" jdbcType="VARCHAR"/>
+        <result property="processDefinitionId" column="PROCESS_DEFINITION_ID_" jdbcType="VARCHAR"/>
+        <result property="formDefinitionId" column="FORM_DEFINITION_ID_" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <resultMap id="formDefinitionResultMap"
+               type="org.flowable.form.engine.impl.persistence.entity.FormDefinitionEntityImpl">
+        <id property="id" column="ID_" jdbcType="VARCHAR"/>
+        <result property="category" column="CATEGORY_"/>
+        <result property="name" column="NAME_"/>
+        <result property="key" column="KEY_" jdbcType="VARCHAR"/>
+        <result property="version" column="VERSION_" jdbcType="INTEGER"/>
+        <result property="deploymentId" column="DEPLOYMENT_ID_" jdbcType="VARCHAR"/>
+        <result property="resourceName" column="RESOURCE_NAME_" jdbcType="VARCHAR"/>
+        <result property="tenantId" column="TENANT_ID_" jdbcType="VARCHAR"/>
+        <result property="description" column="DESCRIPTION_" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <insert id="insertFormRelation" parameterType="cn.firstep.theflow.entity.FormRelationEntity">
+        insert into ${prefix}ACT_FO_FORM_RELATION (
+        ID_,
+        PROCESS_DEFINITION_ID_,
+        FORM_DEFINITION_ID_)
+        values (
+        #{id, jdbcType=VARCHAR},
+        #{processDefinitionId, jdbcType=VARCHAR},
+        #{formDefinitionId, jdbcType=VARCHAR}
+        )
+    </insert>
+
+    <update id="updateFormRelation" parameterType="cn.firstep.theflow.entity.FormRelationEntity">
+        update ${prefix}ACT_FO_FORM_RELATION
+        <set>
+            PROCESS_DEFINITION_ID_ = #{processDefinitionId, jdbcType=VARCHAR},
+            FORM_DEFINITION_ID_ = #{modelId, jdbcType=formDefinitionId}
+        </set>
+        where ID_ = #{id, jdbcType=VARCHAR}
+    </update>
+
+    <select id="findFormDefinitionByProcessDefinitionId" parameterType="String" resultMap="formDefinitionResultMap">
+        select RES.* from ${prefix}ACT_FO_FORM_DEFINITION RES
+        join ${prefix}ACT_FO_FORM_RELATION REL ON RES.ID_ = REL.FORM_DEFINITION_ID_
+        where REL.PROCESS_DEFINITION_ID_ = #{processDefinitionId, jdbcType=VARCHAR}
+    </select>
+
+    <select id="findFormDefinitionByKeyAndProcessDefinitionId" parameterType="String"
+            resultMap="formDefinitionResultMap">
+        select RES.* from ${prefix}ACT_FO_FORM_DEFINITION RES
+        join ${prefix}ACT_FO_FORM_RELATION REL ON RES.ID_ = REL.FORM_DEFINITION_ID_
+        where RES.KEY_ = #{key, jdbcType=VARCHAR} and REL.PROCESS_DEFINITION_ID_ =
+        #{processDefinitionId, jdbcType=VARCHAR}
+    </select>
+
+    <delete id="deleteFormRelation" parameterType="cn.firstep.theflow.entity.FormRelationEntity">
+        delete from ${prefix}ACT_FO_FORM_RELATION where ID_ = #{id, jdbcType=VARCHAR}
+    </delete>
+
+    <delete id="deleteByProcessDefinitionId" parameterType="String">
+        delete from ${prefix}ACT_FO_FORM_RELATION where PROCESS_DEFINITION_ID_ =
+        #{processDefinitionId, jdbcType=VARCHAR}
+    </delete>
+
+</mapper>

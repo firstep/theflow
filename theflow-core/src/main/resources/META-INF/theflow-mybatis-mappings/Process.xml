@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.firstep.theflow.entity.ProcessEntity">
+    <resultMap id="prosessResultMap"
+               type="cn.firstep.theflow.entity.ProcessEntity">
+        <id property="id" column="ID_" jdbcType="VARCHAR" />
+        <result property="name" column="NAME_" jdbcType="VARCHAR" />
+        <result property="businessKey" column="BUSINESS_KEY_" jdbcType="VARCHAR" />
+        <result property="tenantId" column="TENANT_ID_" jdbcType="VARCHAR" />
+        <result property="startUser" column="START_USER_ID_" jdbcType="VARCHAR" />
+        <result property="startTime" column="START_TIME_" jdbcType="TIMESTAMP" />
+        <result property="suspensionState" column="SUSPENSION_STATE_" jdbcType="INTEGER"/>
+        <result property="currTaskId" column="TASK_ID_" jdbcType="VARCHAR" />
+        <result property="currTaskName" column="TASK_NAME_" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <select id="selectProcessCountByQueryCriteria" parameterType="cn.firstep.theflow.repository.criteria.QueryProcessCriteria" resultType="long">
+        SELECT count(DISTINCT RES.ID_)
+        <include refid="selectProcessByQueryCriteriaSql"/>
+    </select>
+
+    <select id="selectProcessByQueryCriteria" parameterType="cn.firstep.theflow.repository.criteria.QueryProcessCriteria" resultMap="prosessResultMap">
+        <if test="firstResult != null and firstResult &gt;= 0">${limitBefore}</if>
+        SELECT DISTINCT T.ID_ AS TASK_ID_, T.NAME_ AS TASK_NAME_,RES.* <if test="firstResult != null and firstResult &gt;= 0">${limitBetween}</if>
+        <include refid="selectProcessByQueryCriteriaSql"/>
+        ${orderBy}
+        <if test="firstResult != null and firstResult &gt;= 0">${limitAfter}</if>
+    </select>
+
+    <sql id="selectProcessByQueryCriteriaSql">
+        FROM ${prefix}ACT_RU_EXECUTION RES
+        <if test="defKey != null">
+            INNER JOIN ${prefix}ACT_RE_PROCDEF P ON RES.PROC_DEF_ID_ = P.ID_
+        </if>
+        INNER JOIN ${prefix}ACT_RU_TASK T ON RES.PROC_INST_ID_ = T.PROC_INST_ID_
+        <if test="groups != null and groups">
+            LEFT JOIN ${prefix}ACT_RU_IDENTITYLINK I ON T.ID_ = I.TASK_ID_
+        </if>
+        WHERE RES.PARENT_ID_ IS NULL
+        <if test="tenant != null">
+            AND RES.TENANT_ID_ = #{tenant}
+        </if>
+        <if test="defId != null">
+            AND RES.PROC_DEF_ID_ = #{defId}
+        </if>
+        <if test="defKey != null">
+            AND P.KEY_ = #{defKey}
+        </if>
+        <if test="procName != null">
+            AND RES.NAME_ LIKE #{procName}${wildcardEscapeClause}
+        </if>
+        <if test="startUser != null">
+            AND RES.START_USER_ID_ = #{startUser}
+        </if>
+        <if test="startTime != null and endTime != null">
+            AND RES.START_TIME_ = BETWEEN #{startTime} AND #{endTime}
+        </if>
+        <choose>
+            <when test="groups != null and groups">
+                AND T.ASSIGNEE_ IS NULL AND (I.USER_ID_ = #{user} OR I.GROUP_ID_ IN
+                <foreach item="item" index="index" collection="groups" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+                )
+            </when>
+            <otherwise>
+                <if test="user != null">
+                    AND T.ASSIGNEE_ = #{user}
+                </if>
+            </otherwise>
+        </choose>
+    </sql>
+
+</mapper>
