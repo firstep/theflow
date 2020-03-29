@@ -72,10 +72,11 @@ public interface DefinitionService extends BasicService {
      * 表单部署
      *
      * @param processDefinitionId
-     * @param modelId
+     * @param modelIds
      * @return
      */
-    String deployForm(String processDefinitionId, String modelId);
+    @Deprecated
+    List<String> deployForm(String processDefinitionId, String ... modelIds);
 
     /**
      * 获取流程启动表单

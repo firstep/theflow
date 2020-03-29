@@ -75,9 +75,10 @@ public class SecurityUtils {
         user.setEmail(StringUtils.EMPTY);
         user.setPassword(flowUser.getId());
 
-        if (UserHolder.isManager(flowUser.getRoles())) {
+        if(flowUser.isManager()) {
             user.setPrivileges(DEFAULT_ADMIN_PRIVILEGES);
         }
+
         return user;
     }
 

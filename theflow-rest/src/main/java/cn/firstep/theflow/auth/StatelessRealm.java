@@ -41,7 +41,6 @@ public class StatelessRealm extends AuthorizingRealm {
         if (primaryPrincipal instanceof StatelessToken) {
             StatelessToken token = (StatelessToken) primaryPrincipal;
             SimpleAuthorizationInfo authz = new SimpleAuthorizationInfo();
-            authz.addRoles(Arrays.asList(token.getUser().getRoles()));
             authz.addStringPermissions(Arrays.asList(token.getUser().getPermissions()));
             return authz;
         }

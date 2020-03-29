@@ -80,6 +80,7 @@ public class DefinitionApi {
         return ResponseEntitys.created(def);
     }
 
+    @Deprecated
     @RequiresPermissions(Permission.PERMISSION_DEFINITION_EDIT)
     @PostMapping("{id}/forms/models/{formId}")
     public ResponseEntity<?> deployForm(@PathVariable String id, @PathVariable String formId) {

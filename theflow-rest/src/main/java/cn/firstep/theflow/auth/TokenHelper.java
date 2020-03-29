@@ -66,7 +66,7 @@ public class TokenHelper {
             String token = JWT.create()
                     .withSubject(user.getId())
                     .withClaim(StatelessToken.KEY_TENANT, user.getTenantId())
-                    .withArrayClaim(StatelessToken.KEY_ROLE, user.getRoles())
+                    .withArrayClaim(StatelessToken.KEY_GROUP, user.getGroups())
                     .withArrayClaim(StatelessToken.KEY_PERMISSION, user.getPermissions())
                     .withClaim(StatelessToken.KEY_REFRESH, now)
                     .withExpiresAt(new Date(now + accessExpire))
@@ -93,7 +93,7 @@ public class TokenHelper {
             JWTVerifier verifier = JWT.require(algorithm)
                     .withSubject(user.getId())
                     .withClaim(StatelessToken.KEY_TENANT, user.getTenantId())
-                    .withArrayClaim(StatelessToken.KEY_ROLE, user.getRoles())
+                    .withArrayClaim(StatelessToken.KEY_GROUP, user.getGroups())
                     .withArrayClaim(StatelessToken.KEY_PERMISSION, user.getPermissions())
                     .withClaim(StatelessToken.KEY_REFRESH, tk.getRefreshTime())
                     .build();

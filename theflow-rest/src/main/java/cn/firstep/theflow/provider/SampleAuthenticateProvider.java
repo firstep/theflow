@@ -20,15 +20,15 @@ public class SampleAuthenticateProvider implements AuthenticateProvider {
         String password = (String)payload.get("password");
 
         //TODO Implement your own authentication.
-        String role = (String)payload.get("role");
+        String group = (String)payload.get("group");
         String tenant = (String)payload.get("tenant");
 
         FlowUser user = new FlowUser();
         user.setId(username);
         user.setName(username);
         user.setTenantId(StringUtils.isEmpty(tenant) ? "sample" : tenant);
-        user.setRoles(new String[]{role});
-        user.setPermissions(UserHolder.ADMIN_ROLE.equals(role) ? Permission.ALL_MANAGER : Permission.ALL_ACCESS);
+        user.setGroups(new String[]{group});
+        user.setPermissions(Permission.ALL_MANAGER);
 
         return user;
     }

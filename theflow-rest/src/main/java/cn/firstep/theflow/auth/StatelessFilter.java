@@ -9,14 +9,20 @@ import org.apache.shiro.web.filter.session.NoSessionCreationFilter;
 import org.apache.shiro.web.util.WebUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.util.AntPathMatcher;
+import org.springframework.util.PathMatcher;
 
+import javax.annotation.PostConstruct;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 /**
  * Stateless Filter.
@@ -28,7 +34,6 @@ public class StatelessFilter extends NoSessionCreationFilter {
     private static final Logger LOGGER = LoggerFactory.getLogger(StatelessFilter.class);
 
     private static final String APP_NAME = "FlowApp";
-
 
     @Override
     protected boolean onPreHandle(ServletRequest request, ServletResponse response, Object mappedValue)

@@ -4,7 +4,6 @@ import cn.firstep.theflow.common.AppException;
 import cn.firstep.theflow.common.code.FormCode;
 import cn.firstep.theflow.common.code.TaskCode;
 import cn.firstep.theflow.provider.UserProvider;
-import cn.firstep.theflow.repository.FormRelationRepository;
 import cn.firstep.theflow.service.TaskService;
 import org.apache.commons.lang3.StringUtils;
 import org.flowable.bpmn.model.*;
@@ -15,15 +14,12 @@ import org.flowable.engine.HistoryService;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.runtime.Execution;
-import org.flowable.form.api.FormDefinition;
 import org.flowable.form.api.FormInfo;
 import org.flowable.form.api.FormModel;
-import org.flowable.form.api.FormService;
 import org.flowable.task.api.DelegationState;
 import org.flowable.task.api.Task;
 import org.flowable.task.api.TaskQuery;
 import org.flowable.task.api.history.HistoricTaskInstanceQuery;
-import org.flowable.variable.api.history.HistoricVariableInstance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,7 +28,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -46,6 +45,9 @@ public class TaskServiceImpl implements TaskService {
     private static Logger LOGGER = LoggerFactory.getLogger(TaskServiceImpl.class);
 
     @Autowired
+    private UserProvider userProvider;
+
+    @Autowired
     private org.flowable.engine.TaskService taskService;
 
     @Autowired
@@ -56,16 +58,6 @@ public class TaskServiceImpl implements TaskService {
 
     @Autowired
     private HistoryService historyService;
-
-    @Autowired
-    private UserProvider userProvider;
-
-    @Autowired
-    private FormService formService;
-
-    @Autowired
-    private FormRelationRepository formRelRepo;
-
 
     @Transactional
     @Override
@@ -98,14 +90,13 @@ public class TaskServiceImpl implements TaskService {
     }
 
     private void complateWithForm(Task task, Map<String, Object> variables, String outcome, Map<String, Object> formData) {
-        List<FormDefinition> forms = formRelRepo.findFormDefinitionByProcessDefinitionId(task.getProcessDefinitionId());
-        Optional<FormDefinition> formDefinition = forms.stream().filter(item -> item.getKey().equals(task.getFormKey())).findFirst();
+        FormInfo form = taskService.getTaskFormModel(task.getId(), Boolean.TRUE);
 
-        if (!formDefinition.isPresent()) {
+        if (form == null) {
             throw AppException.of(FormCode.NOT_FOUND_DEF);
         }
 
-        taskService.completeTaskWithForm(task.getId(), formDefinition.get().getId(), outcome, formData, variables);
+        taskService.completeTaskWithForm(task.getId(), form.getId(), outcome, formData, variables);
     }
 
     @Transactional
@@ -230,7 +221,7 @@ public class TaskServiceImpl implements TaskService {
         } else {
             query.taskWithoutTenantId();
         }
-        if (StringUtils.isNotEmpty(assignee) && !userProvider.isManager()) {
+        if (StringUtils.isNotEmpty(assignee) && !userProvider.getUser().isManager()) {
             query.taskAssignee(assignee);
         }
         Task task = query.singleResult();
@@ -267,16 +258,8 @@ public class TaskServiceImpl implements TaskService {
             return null;
         }
 
-        List<HistoricVariableInstance> vars = historyService.createHistoricVariableInstanceQuery().processInstanceId(task.getProcessInstanceId()).list();
-        Map<String, Object> variables = vars.stream().collect(Collectors.toMap(HistoricVariableInstance::getVariableName, HistoricVariableInstance::getValue));
+        FormInfo form = taskService.getTaskFormModel(task.getId());
 
-        String processDefinitionId = task.getProcessDefinitionId();
-        FormDefinition formDefinition = formRelRepo.findFormDefinitionByKeyAndProcessDefinitionId(task.getFormKey(), processDefinitionId);
-        if (formDefinition == null) {
-            throw AppException.of(FormCode.NOT_FOUND_DEF);
-        }
-
-        FormInfo formInfo = formService.getFormModelWithVariablesById(formDefinition.getId(), task.getId(), variables);
-        return formInfo.getFormModel();
+        return form.getFormModel();
     }
 }

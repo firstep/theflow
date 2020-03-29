@@ -50,6 +50,9 @@ public class ProcessServiceImpl implements ProcessService {
     private static Logger LOGGER = LoggerFactory.getLogger(ProcessServiceImpl.class);
 
     @Autowired
+    private UserProvider userProvider;
+
+    @Autowired
     private RuntimeService runtimeService;
 
     @Autowired
@@ -60,9 +63,6 @@ public class ProcessServiceImpl implements ProcessService {
 
     @Autowired
     private ProcessEngineConfiguration engineConfig;
-
-    @Autowired
-    private UserProvider userProvider;
 
     @Autowired
     private FormService formService;
@@ -132,7 +132,7 @@ public class ProcessServiceImpl implements ProcessService {
     public Page<Process> unclaimed(Pageable pageable, QueryProcessPayload payload) {
         QueryProcessCriteria criteria = QueryProcessCriteria.of(pageable, payload, userProvider.getTenantId());
         criteria.setUser(userProvider.getId());
-        criteria.setGroups(Arrays.asList(userProvider.getRoles()));
+        criteria.setGroups(Arrays.asList(userProvider.getGroups()));
         return doQuery(pageable, criteria);
     }
 
@@ -213,7 +213,7 @@ public class ProcessServiceImpl implements ProcessService {
             throw AppException.of(ProcessCode.NOT_FOUND);
         }
         List<HistoricActivityInstance> highLightedActivitList = historyService.createHistoricActivityInstanceQuery().processInstanceId(processInstanceId).orderByHistoricActivityInstanceStartTime().asc().list();
-        List<String> highLightedActivitis = highLightedActivitList.stream().map(item -> item.getActivityId()).collect(Collectors.toList());
+        List<String> highLightedActivitis = highLightedActivitList.stream().map(HistoricActivityInstance::getActivityId).collect(Collectors.toList());
         List<String> flows = new ArrayList<>();
         BpmnModel bpmnModel = repoService.getBpmnModel(inst.getProcessDefinitionId());
 

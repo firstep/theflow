@@ -65,26 +65,6 @@ public class DatabaseConfig {
         };
     }
 
-    @Bean("theflow-liquibase")
-    public Liquibase theFlowLiquibase(@Qualifier("dataSource") DataSource dataSource) {
-        Liquibase liquibase = null;
-        try {
-            DatabaseConnection connection = new JdbcConnection(dataSource.getConnection());
-            Database database = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(connection);
-            database.setDatabaseChangeLogTableName(THEFLOW_CHANGELOG_PREFIX + database.getDatabaseChangeLogTableName());
-            database.setDatabaseChangeLogLockTableName(THEFLOW_CHANGELOG_PREFIX + database.getDatabaseChangeLogLockTableName());
-
-            liquibase = new Liquibase("META-INF/liquibase/theflow-db-changelog.xml", new ClassLoaderResourceAccessor(), database);
-            liquibase.update("TheFlow");
-            return liquibase;
-        } catch (Exception e) {
-            LOGGER.error("theflow-liquibase update error.", e);
-            throw AppException.of(SystemCode.START_CONFIG_ERROR);
-        } finally {
-            closeDatabase(liquibase);
-        }
-    }
-
     @Bean("modeler-liquibase")
     public Liquibase modelerLiquibase(@Qualifier("dataSource")DataSource dataSource) {
         LOGGER.info("Configuring Liquibase");

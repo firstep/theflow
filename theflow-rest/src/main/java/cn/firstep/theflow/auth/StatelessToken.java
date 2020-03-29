@@ -22,7 +22,7 @@ public class StatelessToken implements AuthenticationToken {
 
     public static final String KEY_PERMISSION = "permission";
 
-    public static final String KEY_ROLE = "role";
+    public static final String KEY_GROUP = "group";
 
     public static final String KEY_TENANT = "tenant";
 
@@ -58,7 +58,7 @@ public class StatelessToken implements AuthenticationToken {
             DecodedJWT decoder = JWT.decode(token);
             this.user.setId(decoder.getSubject());
             this.user.setTenantId(decoder.getClaim(KEY_TENANT).asString());
-            this.user.setRoles(decoder.getClaim(KEY_ROLE).asArray(String.class));
+            this.user.setGroups(decoder.getClaim(KEY_GROUP).asArray(String.class));
             this.user.setPermissions(decoder.getClaim(KEY_PERMISSION).asArray(String.class));
             this.refreshTime = decoder.getClaim(KEY_REFRESH).asLong();
         } catch (Exception e) {

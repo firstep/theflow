@@ -3,18 +3,16 @@ package cn.firstep.theflow.service.impl;
 import cn.firstep.theflow.common.AppException;
 import cn.firstep.theflow.common.code.DefinitionCode;
 import cn.firstep.theflow.common.code.FormCode;
-import cn.firstep.theflow.provider.UserProvider;
-import cn.firstep.theflow.repository.FormRelationRepository;
-import cn.firstep.theflow.service.payload.QueryDefinitionPayload;
-import cn.firstep.theflow.entity.FormRelationEntity;
 import cn.firstep.theflow.model.Definition;
+import cn.firstep.theflow.provider.UserProvider;
 import cn.firstep.theflow.service.DefinitionService;
+import cn.firstep.theflow.service.payload.QueryDefinitionPayload;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
 import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.*;
 import org.flowable.common.engine.impl.util.IoUtil;
-import org.flowable.engine.HistoryService;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.DeploymentBuilder;
@@ -24,8 +22,6 @@ import org.flowable.form.api.*;
 import org.flowable.ui.modeler.domain.Model;
 import org.flowable.ui.modeler.repository.ModelRepository;
 import org.flowable.ui.modeler.serviceapi.ModelService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -33,7 +29,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipInputStream;
@@ -43,16 +41,14 @@ import java.util.zip.ZipInputStream;
  *
  * @author Alvin4u
  */
+@Slf4j
 @Service
 public class DefinitionServiceImpl implements DefinitionService {
 
-    private static Logger LOGGER = LoggerFactory.getLogger(DefinitionServiceImpl.class);
+    private static final String FORM_SUFFIX = ".form";
 
     @Autowired
     private UserProvider userProvider;
-
-    @Autowired
-    private HistoryService historyService;
 
     @Autowired
     private RepositoryService repoService;
@@ -65,12 +61,6 @@ public class DefinitionServiceImpl implements DefinitionService {
 
     @Autowired
     private FormRepositoryService formRepoService;
-
-    @Autowired
-    private FormRelationRepository formRelRepo;
-
-    @Autowired
-    private FormService formService;
 
     @Override
     public Definition last(String key) {
@@ -105,7 +95,7 @@ public class DefinitionServiceImpl implements DefinitionService {
         try {
             return IoUtil.readInputStream(is, "DEFINITION#"+(isDiagram ? "DIAGRAM#" : "RESOURCE#") + id);
         } catch (Exception e) {
-            LOGGER.error(e.getMessage(), e);
+            log.error(e.getMessage(), e);
             return null;
         } finally {
             IoUtil.closeSilently(is);
@@ -134,7 +124,7 @@ public class DefinitionServiceImpl implements DefinitionService {
 
             rst = defs.stream().map(Definition::of).collect(Collectors.toList());
         } catch (Exception e) {
-            LOGGER.error("deploy process except.", e);
+            log.error("deploy process except.", e);
             throw AppException.of(DefinitionCode.DEPLOY_FAILD);
         }
 
@@ -165,26 +155,22 @@ public class DefinitionServiceImpl implements DefinitionService {
             DeploymentBuilder deploymentBuilder = repoService.createDeployment().tenantId(userProvider.getTenantId())
                     .name(model.getName())
                     .addBytes(model.getName() + ".bpmn20.xml", bpmnBytes);
+            Deployment deploy = deploymentBuilder.deploy();
 
-            //attach form resource
+            //deploy form resource
             List<Model> formModels = modeRepo.findByParentModelId(modelId)
                     .stream().filter(item -> Model.MODEL_TYPE_FORM == item.getModelType())
                     .collect(Collectors.toList());
-            formModels.forEach(form -> {
-                deploymentBuilder.addString(form.getKey(), form.getModelEditorJson());
-            });
+            deployForm(formModels, deploy.getId(), deploy.getName());
 
-            Deployment deploy = deploymentBuilder.deploy();
             ProcessDefinition def = repoService.createProcessDefinitionQuery().deploymentId(deploy.getId()).singleResult();
             if (def == null) {
                 throw AppException.of(DefinitionCode.DEPLOY_FAILD);
             }
 
-            repoService.suspendProcessDefinitionById(def.getId());
-
             return Definition.of(def);
         } catch (Exception e) {
-            LOGGER.error("deploy process except.", e);
+            log.error("deploy process except.", e);
             throw AppException.of(DefinitionCode.DEPLOY_ERROR);
         }
     }
@@ -198,35 +184,24 @@ public class DefinitionServiceImpl implements DefinitionService {
         return deploymentQuery;
     }
 
-    private FormDefinition deployForm(Model model, ProcessDefinition processDef) {
-        String resName = model.getName();
-        FormDeployment deploy = formRepoService.createDeployment()
-                .addFormDefinition(resName.endsWith(".form") ? resName : resName + ".form", model.getModelEditorJson())
-                .parentDeploymentId(processDef.getDeploymentId())
-                .tenantId(userProvider.getTenantId())
-                .deploy();
+    private List<FormDefinition> deployForm(Iterable<Model> models, String parentDeployId, String parentDeployName) {
+        FormDeploymentBuilder deployBuilder = formRepoService.createDeployment()
+                .parentDeploymentId(parentDeployId)
+                .tenantId(userProvider.getTenantId());
+        models.forEach(model -> {
+            deployBuilder.addFormDefinition(model.getName().endsWith(FORM_SUFFIX) ? model.getName() : model.getName() + FORM_SUFFIX, model.getModelEditorJson());
+            deployBuilder.name(parentDeployName);
+        });
+        FormDeployment deploy = deployBuilder.deploy();
 
-        FormDefinition formDef = formRepoService.createFormDefinitionQuery().deploymentId(deploy.getId()).singleResult();
-        if (formDef == null) {
-            throw AppException.of(FormCode.NOT_FOUND_DEF);
-        }
-
-        formRelRepo.save(new FormRelationEntity(processDef.getId(), formDef.getId()));
-
-        return formDef;
+        return formRepoService.createFormDefinitionQuery().deploymentId(deploy.getId()).list();
     }
 
     @Transactional
-    public String deployForm(String processDefinitionId, String modelId) {
-        Model model = modelService.getModel(modelId);
-        if (model == null || Model.MODEL_TYPE_FORM != model.getModelType()) {
+    public List<String> deployForm(String processDefinitionId, String ... modelIds) {
+        List<Model> models = Arrays.stream(modelIds).map(modelService::getModel).filter(Objects::nonNull).collect(Collectors.toList());
+        if(models.size() != modelIds.length) {
             throw AppException.of(FormCode.NOT_FOUND_MODEL);
-        }
-
-        //Process and form can only be associated once
-        FormDefinition formDefinition = formRelRepo.findFormDefinitionByKeyAndProcessDefinitionId(model.getKey(), processDefinitionId);
-        if (formDefinition != null) {
-            throw AppException.of(FormCode.NOT_FOUND_DEF);
         }
 
         ProcessDefinition processDefinition = repoService.getProcessDefinition(processDefinitionId);
@@ -234,15 +209,15 @@ public class DefinitionServiceImpl implements DefinitionService {
             throw AppException.of(DefinitionCode.NOT_FOUND);
         }
 
-        FormDefinition def;
+        List<FormDefinition> defs;
         try {
-            def = deployForm(model, processDefinition);
-            return def.getId();
+            defs = deployForm(models, processDefinition.getDeploymentId(), processDefinition.getName());
+            return defs.stream().map(FormDefinition::getId).collect(Collectors.toList());
         } catch (Exception e) {
             if (e instanceof AppException) {
                 throw e;
             } else {
-                LOGGER.error("deploy form error.", e);
+                log.error("deploy form error.", e);
                 throw AppException.of(FormCode.DEPLOY_ERROR);
             }
         }
@@ -260,12 +235,13 @@ public class DefinitionServiceImpl implements DefinitionService {
         FlowElement startElement = process.getInitialFlowElement();
         if (startElement instanceof StartEvent) {
             String formKey = ((StartEvent) startElement).getFormKey();
-            FormDefinition formDefinition = formRelRepo.findFormDefinitionByKeyAndProcessDefinitionId(formKey, processDefinition.getId());
-            if (formDefinition == null) {
-                throw AppException.of(FormCode.NOT_FOUND_DEF);
+            if(StringUtils.isNotEmpty(formKey)) {
+                FormInfo form = formRepoService.getFormModelByKeyAndParentDeploymentId(formKey, processDefinition.getDeploymentId(), userProvider.getTenantId(), Boolean.FALSE);
+                if(form == null) {
+                    throw AppException.of(FormCode.NOT_FOUND_DEF);
+                }
+                return form.getFormModel();
             }
-            FormInfo formInfo = formRepoService.getFormModelById(formDefinition.getId());
-            return formInfo.getFormModel();
         }
         return null;
     }
@@ -279,7 +255,6 @@ public class DefinitionServiceImpl implements DefinitionService {
         if (delRunningInstance) {
             getDefaultFormDeploymentQuery(def.getDeploymentId()).list().forEach(deploy -> {
                 formRepoService.deleteDeployment(deploy.getId());
-                formRelRepo.deleteByProcessDefinitionId(def.getId());
             });
         }
     }
@@ -290,7 +265,6 @@ public class DefinitionServiceImpl implements DefinitionService {
         ProcessDefinition def = get(id, null);
 
         if (isActive) {
-            checkForm(def);
             repoService.activateProcessDefinitionById(id, true, null);
         } else {
             repoService.suspendProcessDefinitionById(id, true, null);
@@ -331,26 +305,4 @@ public class DefinitionServiceImpl implements DefinitionService {
         return processDefinition;
     }
 
-    private List<String> formKeys(ProcessDefinition def) {
-        BpmnModel bpmnModel = repoService.getBpmnModel(def.getId());
-        Process process = bpmnModel.getMainProcess();
-        List<StartEvent> startEvents = process.findFlowElementsOfType(StartEvent.class, true);
-        List<UserTask> userTasks = process.findFlowElementsOfType(UserTask.class, true);
-
-        return Stream.of(startEvents, userTasks).flatMap(list -> list.stream().map(node -> {
-            if (node instanceof StartEvent) {
-                return ((StartEvent) node).getFormKey();
-            } else {
-                return ((UserTask) node).getFormKey();
-            }
-        })).filter(item -> StringUtils.isNotEmpty(item)).distinct().collect(Collectors.toList());
-    }
-
-    private void checkForm(ProcessDefinition def) {
-        List<String> formKeys = formKeys(def);
-        List<String> keys = formRelRepo.findFormDefinitionByProcessDefinitionId(def.getId()).stream().map(item -> item.getKey()).collect(Collectors.toList());
-        if (formKeys.size() != keys.size()) {
-            throw AppException.of(DefinitionCode.NO_FORM_RELATION);
-        }
-    }
 }

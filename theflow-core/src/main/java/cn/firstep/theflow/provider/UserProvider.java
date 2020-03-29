@@ -23,11 +23,10 @@ public interface UserProvider extends TenantProvider {
         return getUser().getId();
     }
 
-    default String[] getRoles() {
-        return getUser().getRoles();
+    default String[] getGroups() {
+        return getUser().getGroups();
     }
 
     FlowUser getUser();
 
-    boolean isManager();
 }

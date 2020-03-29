@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(exclude = {"name", "roles", "permissions"})
+@EqualsAndHashCode(exclude = {"name", "groups", "permissions"})
 public class FlowUser {
 
     private String Id;
@@ -20,7 +20,9 @@ public class FlowUser {
 
     private String tenantId;
 
-    private String[] roles;
+    private String[] groups;
 
     private String[] permissions;
+
+    private boolean manager;
 }

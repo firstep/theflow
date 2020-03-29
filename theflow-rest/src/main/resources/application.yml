@@ -38,7 +38,7 @@ shiro:
     sessionIdUrlRewritingEnabled: false
     sessionIdCookieEnabled: false
   filter:
-    anon: /auth/**, /favicon.ico, /assets/**, /swagger-ui.html, /webjars/**, /swagger-resources/**, /v2/**
+    anon: /auth/**, /favicon.ico, /assets/**, /swagger-ui.html, /webjars/**, /swagger-resources/**, /v2/**, /app/rest/models/*/thumbnail
     authc: /**
 app:
   token:
