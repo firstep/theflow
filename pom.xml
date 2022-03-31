@@ -27,7 +27,7 @@
         <theflow.groupId>cn.firstep.theflow</theflow.groupId>
         <theflow.version>0.0.1-SNAPSHOT</theflow.version>
         <flowable.version>6.4.2</flowable.version>
-        <springboot.version>2.1.8.RELEASE</springboot.version>
+        <springboot.version>2.5.12</springboot.version>
     </properties>
 
     <dependencyManagement>
